@@ -1,0 +1,22 @@
+! This file contains commands to be read in for a Pythia8 run. 
+
+Main:numberOfEvents = 100000
+
+! 2) Beam parameter settings.
+Beams:idA = 2212                    ! first beam, p = 2212, pbar = -2212
+Beams:idB = 2212                    ! second beam, p = 2212, pbar = -2212
+Beams:eCM = 8000.                   ! CM energy of collision
+
+! Set Simulation Process
+WeakDoubleBoson:ffbar2gmZgmZ = on   ! EWK Diboson production
+
+! Set Particle Decay Modes
+23:onMode    = off                  ! force Z -> 2l
+23:onIfMatch = 13 -13
+23:onIfMatch = 11 -11
+23:onIfMatch = 15 -15
+
+22:onMode    = off                  ! force gamma -> 2l
+22:onIfMatch = 13 -13
+22:onIfMatch = 11 -11
+22:onIfMatch = 15 -15
