@@ -1,6 +1,10 @@
 /**
  * @author D. Austin Belknap
  * @file gen_events.cc
+ *
+ * The program simulates the HZZ4L Z-candidate
+ * selection algorithm and stores the event
+ * information in a ROOT TTree
  */
 
 #include <iostream>
@@ -17,6 +21,10 @@ using std::endl;
 
 const double ZMASS = 91.188;
 
+/**
+ * Allows the sort and next_permutation functions
+ * to compare leptons by pT
+ */
 bool comp_leptons( Particle a, Particle b )
 {
     return ( a.pT() > b.pT() );
@@ -50,6 +58,9 @@ int main( int argc, char* argv[] )
 
     TFile *f = new TFile( argv[2], "RECREATE");
     TTree *t = new TTree("selectedEvents","selectedEvents");
+
+
+    // Book TTree Branches
 
     t->Branch("nEvents", &nEvents, "nEvents/I");
 
@@ -125,6 +136,7 @@ int main( int argc, char* argv[] )
         double prev_z2l1pt = 0;
         double prev_z2l2pt = 0;
 
+        // permute over different arrangements of the final-state leptons in the event
         do
         {
             // match OS SF leptons
@@ -156,6 +168,7 @@ int main( int argc, char* argv[] )
         }
         while ( std::next_permutation( leptons.begin(), leptons.end(), comp_leptons ) );
 
+        // continue only if four final leptons have been selected
         if ( final_leptons.size() < 4 )
             continue;
 
