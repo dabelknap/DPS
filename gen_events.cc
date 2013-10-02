@@ -25,22 +25,16 @@ const double ZMASS = 91.188;
  * Allows the sort and next_permutation functions
  * to compare leptons by pT
  */
-bool comp_leptons( Particle a, Particle b )
+bool comp_leptons(Particle a, Particle b)
 {
     return ( a.pT() > b.pT() );
 }
 
 
-int main( int argc, char* argv[] )
+void run_sim(char* cmd_file, char* out_file)
 {
-    if (argc < 3)
-    {
-        cout << "Usage: gen_events [config_file.cmnd] [out_file.root]" << endl;
-        exit(1);
-    }
-
     Pythia pythia;
-    pythia.readFile( argv[1] );
+    pythia.readFile(cmd_file);
 
     int nEvents = pythia.mode("Main:numberOfEvents");
 
@@ -56,7 +50,7 @@ int main( int argc, char* argv[] )
 
     double mass, genMass;
 
-    TFile *f = new TFile( argv[2], "RECREATE");
+    TFile *f = new TFile(out_file, "RECREATE");
     TTree *t = new TTree("selectedEvents","selectedEvents");
 
 
@@ -101,8 +95,7 @@ int main( int argc, char* argv[] )
 
     int passed = 0;
 
-    for ( int i = 0; i < nEvents; i++ )
-    {
+    for (int i = 0; i < nEvents; i++) {
         pythia.next();
 
         std::vector<Particle> leptons;
@@ -110,66 +103,85 @@ int main( int argc, char* argv[] )
 
         genMass = 0;
 
-        for ( int j = 0; j < pythia.event.size(); ++j )
+        for (int j = 0; j < pythia.event.size(); ++j)
         {
             Particle particle = pythia.event[j];
 
             if (particle.id() == 25)
                 genMass = particle.mass();
 
-            bool muon_pass     = abs(particle.id()) == 13 && particle.pT() > 5 && fabs(particle.eta()) < 2.4 && particle.isFinal();
-            bool electron_pass = abs(particle.id()) == 11 && particle.pT() > 7 && fabs(particle.eta()) < 2.5 && particle.isFinal();
+            bool muon_pass = abs(particle.id()) == 13 &&
+                particle.pT() > 5 &&
+                fabs(particle.eta()) < 2.4 &&
+                particle.isFinal();
 
-            if ( muon_pass || electron_pass )
+            bool electron_pass = abs(particle.id()) == 11 &&
+                particle.pT() > 7 &&
+                fabs(particle.eta()) < 2.5 &&
+                particle.isFinal();
+
+            if (muon_pass || electron_pass)
                 leptons.push_back( particle );
         }
 
-        if ( leptons.size() < 4 )
+        if (leptons.size() < 4)
             continue;
 
         std::sort( leptons.begin(), leptons.end(), comp_leptons );
 
-        if ( !(leptons.at(0).pT() > 20 && leptons.at(1).pT() > 10 ) )
+        if (!(leptons.at(0).pT() > 20 && leptons.at(1).pT() > 10 ))
             continue;
 
         double prev_z1mass = 0;
         double prev_z2l1pt = 0;
         double prev_z2l2pt = 0;
 
-        // permute over different arrangements of the final-state leptons in the event
-        do
-        {
+        // permute over different arrangements of the final-state leptons in
+        // the event
+        do {
             // match OS SF leptons
-            bool pass_OSSF    = leptons.at(0).id() == -leptons.at(1).id() && leptons.at(2).id() == -leptons.at(3).id();
+            bool pass_OSSF = leptons.at(0).id() == -leptons.at(1).id() &&
+                leptons.at(2).id() == -leptons.at(3).id();
 
             // ensure leptons are in descending order per Z candidate
-            bool pass_pTorder = leptons.at(0).pT() > leptons.at(1).pT() && leptons.at(2).pT() > leptons.at(3).pT();
+            bool pass_pTorder = leptons.at(0).pT() > leptons.at(1).pT() &&
+                leptons.at(2).pT() > leptons.at(3).pT();
 
             if ( ! (pass_OSSF && pass_pTorder) )
                 continue;
 
             // Z1 is closes to nominal Z mass
             z1mass = m(leptons.at(0).p(),leptons.at(1).p());
-            if ( fabs(z1mass-ZMASS) < fabs(prev_z1mass-ZMASS) )
-            {
+            if (fabs(z1mass-ZMASS) < fabs(prev_z1mass-ZMASS)) {
                 prev_z1mass = z1mass;
-                std::copy( leptons.begin(), leptons.begin() + 4, final_leptons.begin() );
+                std::copy(leptons.begin(),
+                          leptons.begin() + 4,
+                          final_leptons.begin());
             }
 
             // Z2 is made from highest pt leptons
             z2l1pt = leptons.at(2).pT();
             z2l2pt = leptons.at(3).pT();
-            if ( z1mass == prev_z1mass && z2l1pt > prev_z2l1pt && z2l2pt > prev_z2l2pt )
-            {
+
+            bool Z2_pass = z1mass == prev_z1mass &&
+                z2l1pt > prev_z2l1pt &&
+                z2l2pt > prev_z2l2pt;
+
+            if (Z2_pass) {
                 prev_z2l1pt = z2l1pt;
                 prev_z2l2pt = z2l2pt;
-                std::copy( leptons.begin(), leptons.begin() + 4, final_leptons.begin() );
+                std::copy(leptons.begin(),
+                          leptons.begin() + 4,
+                          final_leptons.begin());
             }
         }
-        while ( std::next_permutation( leptons.begin(), leptons.end(), comp_leptons ) );
+        while (std::next_permutation(leptons.begin(),
+                                     leptons.end(),
+                                     comp_leptons)
+              );
 
         // continue only if four final leptons have been selected
-        if ( final_leptons.size() < 4 )
+        if (final_leptons.size() < 4)
             continue;
 
         z1l1pt = final_leptons.at(0).pT();
@@ -214,6 +226,17 @@ int main( int argc, char* argv[] )
     f->Close();
 
     pythia.stat();
+}
+
+
+int main(int argc, char* argv[])
+{
+    if (argc < 3) {
+        cout << "Usage: gen_events [config_file.cmnd] [out_file.root]" << endl;
+        exit(1);
+    }
+
+    run_sim(argv[1], argv[2]);
 
     return 0;
 }
